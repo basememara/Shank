@@ -5,10 +5,10 @@ A Swift micro-library that provides lightweight dependency injection.
 ```swift
 struct MyStruct {
 
-    @Inject(module: TestModule())
+    @Inject
     var someObject: SomeObjectType
     
-    @Inject(module: TestModule())
+    @Inject
     var anotherObject: AnotherObjectType
     
     init() {
