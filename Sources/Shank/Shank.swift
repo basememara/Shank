@@ -15,123 +15,89 @@ import Foundation
 
 /// A dependency registry that provides resolutions for object instances.
 private class Resolver {
-    /// Default dependency registry for object instances.
-    static let root = Resolver()
+    /// Stored object instance closures.
+    private var factories = [String: () -> Any?]()
     
-    private var registry = [String: Registration<Any>]()
-    private let applicationScope = ApplicationScope()
-    private let uniqueScope = UniqueScope()
-}
-
-// MARK: Actions
-
-private extension Resolver {
-    
-    /// Registers a specific types and its scoped instantiating factory.
-    func register<T>(_ type: T.Type = T.self, scope: ResolverScope, factory: @escaping FactoryClosure<T>) {
-        registry[key(for: T.self)] = .init(scope: scope, factory: factory)
+    /// Registers a specific type and its instantiating factory.
+    func register<T>(_ type: T.Type = T.self, factory: @escaping () -> T) {
+        let key = String(describing: T.self)
+        factories[key] = factory
     }
 
     /// Resolves and returns an instance of the given type from the current registry.
+    ///
+    /// If the dependency is not found, an exception will occur.
+    /// Use `.optional()` if you expect dependencies to be `nil`.
     func resolve<T>(_ type: T.Type = T.self) -> T {
-        let key = key(for: T.self)
-        
-        guard let instance = registry[key]?.resolve(for: key) as? T else {
+        guard let instance = optional(T.self) else {
             fatalError("Dependency '\(T.self)' not resolved!")
         }
         
         return instance
     }
+
+    /// Resolves and returns an optional instance of the given type from the current registry.
+    func optional<T>(_ type: T.Type = T.self) -> T? {
+        let key = String(describing: T.self)
+        return factories[key]?() as? T
+    }
     
-    func key(for type: T.Type) -> String {
-        String(describing: T.self)
-    }
-}
-
-// MARK: Subtypes
-
-private extension Resolver {
-    typealias FactoryClosure<T> = () -> T?
-
-    class Registration<T> {
-        private let scope: ResolverScope
-        let factory: FactoryClosure<T>
-
-        init(scope: ResolverScope, factory: @escaping FactoryClosure<T>) {
-            self.scope = scope
-            self.factory = factory
-        }
-        
-        func resolve(for key: String) -> T? {
-            scope.resolve(factory, for: key)
-        }
-    }
-}
-
-// MARK: Scopes
-
-/// Resolver scopes exist to control when resolution occurs and how resolved instances are cached.
-private protocol ResolverScope: class {
-    func resolve<T>(_ factory: Resolver.FactoryClosure<T>, for key: String) -> T?
-}
-
-private extension Resolver {
-    
-    /// All application scoped types exist for lifetime of the app (singletons).
-    class ApplicationScope: ResolverScope {
-        private let queue = DispatchQueue(label: "Resolver.ApplicationScope")
-        private var cached = [String: Any]()
-
-        func resolve<T>(_ factory: FactoryClosure<T>, for key: String) -> T? {
-            guard let element = cached[key] else {
-                guard let resolved = factory() else { return nil }
-                queue.sync { cached[key] = resolved }
-                return resolved
-            }
-            
-            return element as? T
-        }
-    }
-
-    /// Unique type are created and initialized each and every time they are resolved.
-    class UniqueScope: ResolverScope {
-        
-        fileprivate func resolve<T>(_ factory: FactoryClosure<T>, for key: String) -> T? {
-            factory()
-        }
+    deinit {
+        factories.removeAll()
     }
 }
 
 // MARK: Public API
 
-/// Resolves an instance from the dependency injection container.
-@propertyWrapper
-public struct Inject<Value> {
+public struct Container {
+    /// Composition root for dependency instances.
+    fileprivate static let root = Resolver()
     
-    public var wrappedValue: Value {
-        Resolver.root.resolve(Value.self)
-    }
-
     public init() {}
     
-    public init(module: Module) {
-        module.resolve()
+    public func `import`(@ModuleTypeBuilder _ modules: () -> [Module.Type]) {
+        modules().forEach { $0.init().export() }
+    }
+
+    @_functionBuilder
+    public struct ModuleTypeBuilder {
+        
+        public static func buildBlock(_ modules: Module.Type...) -> [Module.Type] {
+            modules
+        }
     }
 }
 
-/// A space to declare dependency instances.
-public protocol Module {}
+/// A type that contributes to the object graph.
+public protocol Module {
+    init()
+    func export()
+}
+
 public extension Module {
+    private static var root: Resolver { Container.root }
     
-    func single<T>(resolved object: @escaping () -> T) {
-        Resolver.root.register(scope: Resolver.root.applicationScope, factory: object)
-    }
-    
-    func factory<T>(resolved object: @escaping () -> T) {
-        Resolver.root.register(scope: Resolver.root.uniqueScope, factory: object)
+    func make<T>(resolved object: @escaping () -> T) {
+        Self.root.register(factory: object)
     }
     
     func resolve<T>(_ type: T.Type = T.self) -> T {
-        Resolver.root.resolve()
+        Self.root.resolve()
     }
+    
+    func optional<T>(_ type: T.Type = T.self) -> T? {
+        Self.root.optional()
+    }
+}
+
+/// Resolves an instance from the dependency injection container.
+@propertyWrapper
+public struct Inject<Value> {
+    private static var root: Resolver { Container.root }
+    
+    public var wrappedValue: Value {
+        Self.root.resolve(Value.self)
+    }
+    
+    public init() {}
 }
