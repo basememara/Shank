@@ -2,24 +2,17 @@
 
 A Swift micro-library that provides lightweight dependency injection.
 
-Create modules of dependencies:
+Inject dependencies via property wrappers:
 ```swift
-struct WidgetModule: Module {
+class ViewController: UIViewController {
     
-    func register() {
-        make { WidgetWorker() as WidgetWorkerType }
-        make { WidgetNetworkRemote() as WidgetRemote }
-        make { WidgetRealmStore() as WidgetStore }
-        make { HTTPService() as HTTPServiceType }
-    }
-}
-
-struct SampleModule: Module {
+    @Inject private var widgetWorker: WidgetWorkerType
+    @Inject private var someObject: SomeObjectType
+    @Inject private var anotherObject: AnotherObjectType
     
-    func register() {
-        make { SomeObject() as SomeObjectType }
-        make { AnotherObject(someObject: self.resolve()) as AnotherObjectType }
-        make { SomeViewModel() as ViewModelObjectType }
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        widgetWorker.test()
     }
 }
 ```
@@ -38,17 +31,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 ```
-Inject dependencies for use:
+Create modules of dependencies:
 ```swift
-class ViewController: UIViewController {
+struct WidgetModule: Module {
     
-    @Inject private var widgetWorker: WidgetWorkerType
-    @Inject private var someObject: SomeObjectType
-    @Inject private var anotherObject: AnotherObjectType
+    func register() {
+        make { WidgetWorker() as WidgetWorkerType }
+        make { WidgetNetworkRemote() as WidgetRemote }
+        make { WidgetRealmStore() as WidgetStore }
+        make { HTTPService() as HTTPServiceType }
+    }
+}
+
+struct SampleModule: Module {
     
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        widgetWorker.test()
+    func register() {
+        make { SomeObject() as SomeObjectType }
+        make { AnotherObject(someObject: self.resolve()) as AnotherObjectType }
+        make { SomeViewModel() as ViewModelObjectType }
     }
 }
 ```
