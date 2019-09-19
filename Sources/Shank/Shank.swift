@@ -14,22 +14,25 @@
 import Foundation
 
 /// A dependency registry that provides resolutions for object instances.
-private class Resolver {
+private class Container {
+    /// Composition root for dependency instances.
+    static let root = Container()
+    
     /// Stored object instance closures.
-    private var factories = [String: () -> Any?]()
+    private var dependencies = [String: () -> Any?]()
     
     /// Registers a specific type and its instantiating factory.
-    func register<T>(_ type: T.Type = T.self, factory: @escaping () -> T) {
+    func register<T>(factory: @escaping () -> T) {
         let key = String(describing: T.self)
-        factories[key] = factory
+        dependencies[key] = factory
     }
 
     /// Resolves and returns an instance of the given type from the current registry.
     ///
     /// If the dependency is not found, an exception will occur.
     /// Use `.optional()` if you expect dependencies to be `nil`.
-    func resolve<T>(_ type: T.Type = T.self) -> T {
-        guard let instance = optional(T.self) else {
+    func resolve<T>() -> T {
+        guard let instance: T = optional() else {
             fatalError("Dependency '\(T.self)' not resolved!")
         }
         
@@ -37,66 +40,53 @@ private class Resolver {
     }
 
     /// Resolves and returns an optional instance of the given type from the current registry.
-    func optional<T>(_ type: T.Type = T.self) -> T? {
+    func optional<T>() -> T? {
         let key = String(describing: T.self)
-        return factories[key]?() as? T
+        return dependencies[key]?() as? T
     }
     
     deinit {
-        factories.removeAll()
+        dependencies.removeAll()
     }
 }
 
 // MARK: Public API
 
-public struct Container {
-    /// Composition root for dependency instances.
-    fileprivate static let root = Resolver()
-    
-    public init() {}
-    
-    public func `import`(@ModuleTypeBuilder _ modules: () -> [Module.Type]) {
-        modules().forEach { $0.init().export() }
-    }
-
-    @_functionBuilder
-    public struct ModuleTypeBuilder {
-        
-        public static func buildBlock(_ modules: Module.Type...) -> [Module.Type] {
-            modules
-        }
-    }
-}
-
 /// A type that contributes to the object graph.
 public protocol Module {
-    init()
-    func export()
+    func register()
 }
 
 public extension Module {
-    private static var root: Resolver { Container.root }
+    private static var root: Container { .root }
     
-    func make<T>(resolved object: @escaping () -> T) {
-        Self.root.register(factory: object)
+    func make<T>(factory: @escaping () -> T) {
+        Self.root.register(factory: factory)
     }
     
-    func resolve<T>(_ type: T.Type = T.self) -> T {
+    func resolve<T>() -> T {
         Self.root.resolve()
     }
     
-    func optional<T>(_ type: T.Type = T.self) -> T? {
+    func optional<T>() -> T? {
         Self.root.optional()
+    }
+}
+
+public extension Array where Element == Module {
+    
+    func register() {
+        forEach { $0.register() }
     }
 }
 
 /// Resolves an instance from the dependency injection container.
 @propertyWrapper
 public struct Inject<Value> {
-    private static var root: Resolver { Container.root }
+    private static var root: Container { .root }
     
     public var wrappedValue: Value {
-        Self.root.resolve(Value.self)
+        Self.root.resolve()
     }
     
     public init() {}

@@ -1,78 +1,135 @@
 import XCTest
 import Shank
 
-final class GraphTests: XCTestCase {
-
-    @Inject
-    private var mediaWorker: MediaWorkerType
+final class DependencyTests: XCTestCase {
+    
+    private static let modules: [Module] = [
+        WidgetModule(),
+        SampleModule()
+    ]
+    
+    @Inject private var widgetWorker: WidgetWorkerType
+    @Inject private var someObject: SomeObjectType
+    @Inject private var anotherObject: AnotherObjectType
+    
+    override class func setUp() {
+        super.setUp()
+        modules.register()
+    }
 }
 
-extension GraphTests {
+// MARK: Subtypes
+
+struct WidgetModule: Module {
     
-    func testResolve() {
+    func register() {
+        make { WidgetWorker() as WidgetWorkerType }
+        make { WidgetNetworkRemote() as WidgetRemote }
+        make { WidgetRealmStore() as WidgetStore }
+        make { HTTPService() as HTTPServiceType }
+    }
+}
+
+struct SampleModule: Module {
+    
+    func register() {
+        make { SomeObject() as SomeObjectType }
+        make { AnotherObject(someObject: self.resolve()) as AnotherObjectType }
+        make { SomeViewModel() as ViewModelObjectType }
+    }
+}
+
+// MARK: - Test Cases
+
+extension DependencyTests {
+    
+    func testResolver() {
         // Given
-        let result = mediaWorker.fetch(id: 3)
+        let widgetResult = widgetWorker.fetch(id: 3)
+        let someResult = someObject.testAbc()
+        let anotherResult = anotherObject.testXyz()
         
         // Then
-        XCTAssertEqual(result, "")
+        XCTAssertEqual(widgetResult, "|MediaRealmStore.3||MediaNetworkRemote.3|")
+        XCTAssertEqual(someResult, "SomeObject.testAbc")
+        XCTAssertEqual(anotherResult, "AnotherObject.testXyz|SomeObject.testAbc")
     }
 }
 
-extension Resolver: ResolverRegistering {
+// MARK: - Test Data
+
+protocol SomeObjectType {
+    func testAbc() -> String
+}
+
+struct SomeObject: SomeObjectType {
+    func testAbc() -> String {
+        "SomeObject.testAbc"
+    }
+}
+
+protocol AnotherObjectType {
+    func testXyz() -> String
+}
+
+struct AnotherObject: AnotherObjectType {
+    private let someObject: SomeObjectType
     
-    public static func registerAllServices() {
-        register { MediaWorker(store: resolve(), remote: optional()) as MediaWorkerType }
-        register { MediaNetworkRemote(httpService: resolve()) as MediaRemote }
-        register { MediaRealmStore() as MediaStore }
-        register { HTTPService() as HTTPServiceType }
-        
-        register { MyService() as MyServiceType }
+    init(someObject: SomeObjectType) {
+        self.someObject = someObject
+    }
+    
+    func testXyz() -> String {
+        "AnotherObject.testXyz|" + someObject.testAbc()
     }
 }
 
-// MARK: - API
+protocol ViewModelObjectType {}
+struct SomeViewModel: ViewModelObjectType {
+    @Inject
+    private var someObject: SomeObjectType
+    
+    @Inject
+    private var anotherObject: AnotherObjectType
+}
 
-protocol MediaStore {
+
+protocol WidgetStore {
     func fetch(id: Int) -> String
     func createOrUpdate(_ request: String) -> String
 }
 
-protocol MediaRemote {
+protocol WidgetRemote {
     func fetch(id: Int) -> String
 }
 
-protocol MediaWorkerType {
+protocol WidgetWorkerType {
     func fetch(id: Int) -> String
 }
 
-struct MediaWorker: MediaWorkerType {
-    private let store: MediaStore
-    private let remote: MediaRemote?
+struct WidgetWorker: WidgetWorkerType {
+    @Inject
+    private var store: WidgetStore
     
-    init(store: MediaStore, remote: MediaRemote?) {
-        self.store = store
-        self.remote = remote
-    }
+    @Inject
+    private var remote: WidgetRemote
     
     func fetch(id: Int) -> String {
         store.fetch(id: id)
-            + (remote?.fetch(id: id) ?? "")
+            + remote.fetch(id: id)
     }
 }
 
-struct MediaNetworkRemote: MediaRemote {
-    private let httpService: HTTPServiceType
-    
-    init(httpService: HTTPServiceType) {
-        self.httpService = httpService
-    }
+struct WidgetNetworkRemote: WidgetRemote {
+    @Inject
+    private var httpService: HTTPServiceType
     
     func fetch(id: Int) -> String {
         "|MediaNetworkRemote.\(id)|"
     }
 }
 
-struct MediaRealmStore: MediaStore {
+struct WidgetRealmStore: WidgetStore {
     
     func fetch(id: Int) -> String {
         "|MediaRealmStore.\(id)|"
