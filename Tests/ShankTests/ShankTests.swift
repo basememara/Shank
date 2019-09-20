@@ -121,11 +121,8 @@ protocol WidgetWorkerType {
 }
 
 struct WidgetWorker: WidgetWorkerType {
-    @Inject
-    private var store: WidgetStore
-    
-    @Inject
-    private var remote: WidgetRemote
+    @Inject private var store: WidgetStore
+    @Inject private var remote: WidgetRemote
     
     func fetch(id: Int) -> String {
         store.fetch(id: id)
@@ -134,8 +131,7 @@ struct WidgetWorker: WidgetWorkerType {
 }
 
 struct WidgetNetworkRemote: WidgetRemote {
-    @Inject
-    private var httpService: HTTPServiceType
+    @Inject private var httpService: HTTPServiceType
     
     func fetch(id: Int) -> String {
         "|MediaNetworkRemote.\(id)|"

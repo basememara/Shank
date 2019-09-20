@@ -15,7 +15,7 @@ import Foundation
 
 /// A dependency registry that provides resolutions for object instances.
 private class Container {
-    /// Composition root for dependency instances.
+    /// Composition root for dependency factories.
     static let root = Container()
     
     /// Stored object instance closures.
@@ -27,10 +27,9 @@ private class Container {
         dependencies[key] = factory
     }
 
-    /// Resolves and returns an instance of the given type from the current registry.
+    /// Resolves through inference and returns an instance of the given type from the current root container.
     ///
-    /// If the dependency is not found, an exception will occur.
-    /// Use `.optional()` if you expect dependencies to be `nil`.
+    /// If the dependency is not found, an exception will occur. Use `.optional()` if you expect dependencies to be `nil`.
     func resolve<T>() -> T {
         guard let instance: T = optional() else {
             fatalError("Dependency '\(T.self)' not resolved!")
