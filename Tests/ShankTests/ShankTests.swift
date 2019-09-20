@@ -11,6 +11,7 @@ final class DependencyTests: XCTestCase {
     @Inject private var widgetWorker: WidgetWorkerType
     @Inject private var someObject: SomeObjectType
     @Inject private var anotherObject: AnotherObjectType
+    @Inject private var viewModelObject: ViewModelObjectType
     
     override class func setUp() {
         super.setUp()
@@ -48,11 +49,15 @@ extension DependencyTests {
         let widgetResult = widgetWorker.fetch(id: 3)
         let someResult = someObject.testAbc()
         let anotherResult = anotherObject.testXyz()
+        let viewModelResult = viewModelObject.testLmn()
+        let viewModelNestedResult = viewModelObject.testLmnNested()
         
         // Then
         XCTAssertEqual(widgetResult, "|MediaRealmStore.3||MediaNetworkRemote.3|")
         XCTAssertEqual(someResult, "SomeObject.testAbc")
         XCTAssertEqual(anotherResult, "AnotherObject.testXyz|SomeObject.testAbc")
+        XCTAssertEqual(viewModelResult, "SomeViewModel.testLmn|SomeObject.testAbc")
+        XCTAssertEqual(viewModelNestedResult, "SomeViewModel.testLmnNested|AnotherObject.testXyz|SomeObject.testAbc")
     }
 }
 
@@ -84,15 +89,23 @@ struct AnotherObject: AnotherObjectType {
     }
 }
 
-protocol ViewModelObjectType {}
-struct SomeViewModel: ViewModelObjectType {
-    @Inject
-    private var someObject: SomeObjectType
-    
-    @Inject
-    private var anotherObject: AnotherObjectType
+protocol ViewModelObjectType {
+    func testLmn() -> String
+    func testLmnNested() -> String
 }
 
+struct SomeViewModel: ViewModelObjectType {
+    @Inject private var someObject: SomeObjectType
+    @Inject private var anotherObject: AnotherObjectType
+    
+    func testLmn() -> String {
+        "SomeViewModel.testLmn|" + someObject.testAbc()
+    }
+    
+    func testLmnNested() -> String {
+        "SomeViewModel.testLmnNested|" + anotherObject.testXyz()
+    }
+}
 
 protocol WidgetStore {
     func fetch(id: Int) -> String
