@@ -13,80 +13,82 @@
 
 import Foundation
 
-/// A dependency registry that provides resolutions for object instances.
-private class Container {
-    /// Composition root for dependency instances.
-    static let root = Container()
-    
+/// A dependency containner that provides resolutions for object instances.
+public class Container {
     /// Stored object instance closures.
-    private var dependencies = [String: () -> Any?]()
+    private var dependencies = [String: () -> Any]()
+    
+    /// DSL for declaring dependencies within the container initializer.
+    @_functionBuilder public struct DependencyBuilder {
+        public static func buildBlock(_ dependencies: Dependency...) -> [Dependency] {
+            dependencies
+        }
+    }
+    
+    /// Construct dependency resolutions.
+    public init(@DependencyBuilder _ dependencies: () -> [Dependency]) {
+        dependencies().forEach {
+            add(String(describing: $0.type.self), dependency: $0.block)
+        }
+    }
+    
+    /// Assigns the current container to the composition root.
+    public func build() {
+        Self.root = self
+    }
+    
+    fileprivate init() {}
+    deinit { dependencies.removeAll() }
+}
+
+private extension Container {
+    /// Composition root container of dependencies.
+    static var root = Container()
     
     /// Registers a specific type and its instantiating factory.
-    func register<T>(factory: @escaping () -> T) {
-        let key = String(describing: T.self)
-        dependencies[key] = factory
+    func add<T>(_ key: String? = nil, dependency: @escaping () -> T) {
+        let key = key ?? self.key(for: T.self)
+        dependencies[key] = dependency
     }
 
-    /// Resolves and returns an instance of the given type from the current registry.
+    /// Resolves through inference and returns an instance of the given type from the current default container.
     ///
     /// If the dependency is not found, an exception will occur.
-    /// Use `.optional()` if you expect dependencies to be `nil`.
     func resolve<T>() -> T {
-        guard let instance: T = optional() else {
+        let key = self.key(for: T.self)
+        
+        guard let dependency: T = dependencies[key]?() as? T else {
             fatalError("Dependency '\(T.self)' not resolved!")
         }
         
-        return instance
-    }
-
-    /// Resolves and returns an optional instance of the given type from the current registry.
-    func optional<T>() -> T? {
-        let key = String(describing: T.self)
-        return dependencies[key]?() as? T
+        return dependency
     }
     
-    deinit {
-        dependencies.removeAll()
+    /// Generate key for storing object resolution.
+    func key<T>(for type: T.Type) -> String {
+        String(describing: T.self)
     }
 }
 
 // MARK: Public API
 
 /// A type that contributes to the object graph.
-public protocol Module {
-    func register()
-}
-
-public extension Module {
-    private static var root: Container { .root }
+public struct Dependency {
+    fileprivate let block: () -> Any
+    fileprivate let type: Any.Type
     
-    func make<T>(factory: @escaping () -> T) {
-        Self.root.register(factory: factory)
-    }
-    
-    func resolve<T>() -> T {
-        Self.root.resolve()
-    }
-    
-    func optional<T>() -> T? {
-        Self.root.optional()
-    }
-}
-
-public extension Array where Element == Module {
-    
-    func register() {
-        forEach { $0.register() }
+    public init<T>(_ block: @escaping () -> T) {
+        self.block = block
+        self.type = T.self
     }
 }
 
 /// Resolves an instance from the dependency injection container.
 @propertyWrapper
 public struct Inject<Value> {
-    private static var root: Container { .root }
     
     public var wrappedValue: Value {
-        Self.root.resolve()
+        Container.root.resolve()
     }
     
     public init() {}
