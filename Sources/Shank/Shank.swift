@@ -23,6 +23,10 @@ public class Container {
         public static func buildBlock(_ dependencies: Dependency...) -> [Dependency] {
             dependencies
         }
+        
+        public static func buildBlock(_ dependency: Dependency) -> Dependency {
+            dependency
+        }
     }
     
     /// Construct dependency resolutions.
@@ -30,6 +34,12 @@ public class Container {
         dependencies().forEach {
             add(String(describing: $0.type.self), dependency: $0.block)
         }
+    }
+    
+    /// Construct dependency resolution.
+    public init(@DependencyBuilder _ dependency: () -> Dependency) {
+        let unwrap = dependency()
+        add(String(describing: unwrap.type.self), dependency: unwrap.block)
     }
     
     /// Assigns the current container to the composition root.
