@@ -3,13 +3,15 @@ import Shank
 
 final class DependencyTests: XCTestCase {
     
-    private static let container = Container {
-        Dependency { WidgetModule() as WidgetModuleType }
-        Dependency { SampleModule() as SampleModuleType }
+    private static let dependencies = Dependencies {
+        Module { WidgetModule() as WidgetModuleType }
+        Module { SampleModule() as SampleModuleType }
+        Module("abc") { SampleModule(value: "123") as SampleModuleType }
     }
     
     @Inject private var widgetModule: WidgetModuleType
     @Inject private var sampleModule: SampleModuleType
+    @Inject("abc") private var sampleModule2: SampleModuleType
     
     private lazy var widgetWorker: WidgetWorkerType = widgetModule.component()
     private lazy var someObject: SomeObjectType = sampleModule.component()
@@ -19,7 +21,7 @@ final class DependencyTests: XCTestCase {
     
     override class func setUp() {
         super.setUp()
-        container.build()
+        dependencies.build()
     }
 }
 
@@ -31,6 +33,7 @@ extension DependencyTests {
         // Given
         let widgetModuleResult = widgetModule.test()
         let sampleModuleResult = sampleModule.test()
+        let sampleModule2Result = sampleModule2.test()
         let widgetResult = widgetWorker.fetch(id: 3)
         let someResult = someObject.testAbc()
         let anotherResult = anotherObject.testXyz()
@@ -42,6 +45,7 @@ extension DependencyTests {
         // Then
         XCTAssertEqual(widgetModuleResult, "WidgetModule.test()")
         XCTAssertEqual(sampleModuleResult, "SampleModule.test()")
+        XCTAssertEqual(sampleModule2Result, "SampleModule.test()123")
         XCTAssertEqual(widgetResult, "|MediaRealmStore.3||MediaNetworkRemote.3|")
         XCTAssertEqual(someResult, "SomeObject.testAbc")
         XCTAssertEqual(anotherResult, "AnotherObject.testXyz|SomeObject.testAbc")
@@ -83,6 +87,11 @@ extension DependencyTests {
     }
 
     struct SampleModule: SampleModuleType {
+        let value: String?
+        
+        init(value: String? = nil) {
+            self.value = value
+        }
         
         func component() -> SomeObjectType {
             SomeObject()
@@ -104,7 +113,7 @@ extension DependencyTests {
         }
         
         func test() -> String {
-            "SampleModule.test()"
+            "SampleModule.test()\(value ?? "")"
         }
     }
 
