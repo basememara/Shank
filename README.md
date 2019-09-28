@@ -21,18 +21,18 @@ Register modules early in your app:
 ```swift
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
-    private let container = Container {
-        Dependency { WidgetModule() as WidgetModuleType }
-        Dependency { SampleModule() as SampleModuleType }
+    private let dependencies = Dependencies {
+        Module { WidgetModule() as WidgetModuleType }
+        Module { SampleModule() as SampleModuleType }
     }
     
     override init() {
         super.init()
-        container.build()
+        dependencies.build()
     }
 }
 ```
-If you forget to `build` the container, it will result in a run-time exception. 
+If you forget to `build` the dependency container, it will result in a run-time exception. 
 Since there is no type-safety to guard against this, it is recommended to 
 limit the dependency container to hold "modules" only:
 ```swift
@@ -344,7 +344,7 @@ protocol HTTPServiceType {
     func post(url: String) -> String
 }
 ```
-This way, only your "modules" are not type-safe, which we can live with since
+This way, only your "modules" are not type-safe, which is acceptable since
 an exception with a missing module should happen early on and hopefully
 obvious enough in development.
 
