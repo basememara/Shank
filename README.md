@@ -12,7 +12,7 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        widgetWorker.test()
+        widgetModule.test()
         sampleModule.test()
     }
 }
