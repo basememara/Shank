@@ -2,6 +2,8 @@
 
 A Swift micro-library that provides lightweight dependency injection.
 
+Read more here: https://basememara.com/swift-dependency-injection-via-property-wrapper/
+
 Inject dependencies via property wrappers:
 ```swift
 class ViewController: UIViewController {
