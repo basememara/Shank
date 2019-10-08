@@ -7,11 +7,13 @@ final class DependencyTests: XCTestCase {
         Module { WidgetModule() as WidgetModuleType }
         Module { SampleModule() as SampleModuleType }
         Module("abc") { SampleModule(value: "123") as SampleModuleType }
+        Module("singleton", scope: .singleton) { SampleModule(value: "singleton") as SampleModuleType }
     }
     
     @Inject private var widgetModule: WidgetModuleType
     @Inject private var sampleModule: SampleModuleType
     @Inject("abc") private var sampleModule2: SampleModuleType
+    @Inject("singleton") private var singletonModule: SampleModuleType
     
     private lazy var widgetWorker: WidgetWorkerType = widgetModule.component()
     private lazy var someObject: SomeObjectType = sampleModule.component()
@@ -23,6 +25,11 @@ final class DependencyTests: XCTestCase {
         super.setUp()
         dependencies.build()
     }
+}
+
+final class DependencyScopeHelper {
+    @Inject("abc") var sampleModule2: SampleModuleType
+    @Inject("singleton") var singletonModule: SampleModuleType
 }
 
 // MARK: - Test Cases
@@ -60,6 +67,18 @@ extension DependencyTests {
         let widgetModuleResult2 = self.widgetModule as! WidgetModule
         XCTAssertTrue(widgetModuleResult1 === widgetModuleResult2)
     }
+
+    func testSingletonScope() {
+        let helper = DependencyScopeHelper()
+        let helperPrototype = helper.sampleModule2 as! SampleModule
+        let helperSingleton = helper.singletonModule as! SampleModule
+        let sampleModule = self.sampleModule2 as! SampleModule
+        let singletonModule = self.singletonModule as! SampleModule
+        // The prototypes are different instances
+        XCTAssertFalse(sampleModule === helperPrototype)
+        // The singletons are the same instance
+        XCTAssertTrue(singletonModule === helperSingleton)
+    }
 }
 
 // MARK: - Subtypes
@@ -92,7 +111,7 @@ extension DependencyTests {
         }
     }
 
-    struct SampleModule: SampleModuleType {
+    final class SampleModule: SampleModuleType {
         let value: String?
         
         init(value: String? = nil) {
