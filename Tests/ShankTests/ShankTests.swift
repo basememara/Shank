@@ -54,13 +54,19 @@ extension DependencyTests {
         XCTAssertEqual(viewControllerResult, "SomeViewController.testRst|SomeObject.testAbc")
         XCTAssertEqual(viewControllerNestedResult, "SomeViewController.testRstNested|AnotherObject.testXyz|SomeObject.testAbc")
     }
+
+    func testWontDeinitItem() {
+        let widgetModuleResult1 = self.widgetModule as! WidgetModule
+        let widgetModuleResult2 = self.widgetModule as! WidgetModule
+        XCTAssertTrue(widgetModuleResult1 === widgetModuleResult2)
+    }
 }
 
 // MARK: - Subtypes
 
 extension DependencyTests {
 
-    struct WidgetModule: WidgetModuleType {
+    class WidgetModule: WidgetModuleType {
         
         func component() -> WidgetWorkerType {
             WidgetWorker(
