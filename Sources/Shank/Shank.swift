@@ -62,16 +62,22 @@ private extension Dependencies {
         // If the module was registered as a singleton, return the cached instance if it exists,
         // or the resolved one after storing it in the dependency resolver.
         let component: T = {
-            guard let resolvedModule = module.resolve() as? T else {
-                fatalError("Dependency '\(T.self)' not resolved!")
+            // Create a closure to lazily evaluate the resolution of the module
+            let resolvedModuleClosure: () -> T = {
+                guard let mod = module.resolve() as? T else {
+                    fatalError("Dependency '\(T.self)' not resolved!")
+                }
+                return mod
             }
+
             switch module.scope {
             case .prototype:
-                return resolvedModule
+                return resolvedModuleClosure()
             case .singleton:
                 if let instance = instances[name] as? T {
                     return instance
                 }
+                let resolvedModule = resolvedModuleClosure()
                 instances[name] = resolvedModule
                 return resolvedModule
             }
