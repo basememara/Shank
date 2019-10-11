@@ -113,17 +113,14 @@ public struct Module {
 
 /// Resolves an instance from the dependency injection container.
 @propertyWrapper
-public final class Inject<Value> {
+public struct Inject<Value> {
     private let name: String?
-    private var value: Value?
+    private let resolutionClosure = memoize(fn: { name -> Value in
+        return Dependencies.root.resolve(for: name)
+    })
     
     public var wrappedValue: Value {
-        if let value = self.value {
-            return value
-        }
-        let value: Value = Dependencies.root.resolve(for: name)
-        self.value = value
-        return value
+        return self.resolutionClosure(self.name)
     }
     
     public init() {
