@@ -1,8 +1,6 @@
-# Shank
+# Biodag
 
-A Swift micro-library that provides lightweight dependency injection.
-
-Read more here: https://basememara.com/swift-dependency-injection-via-property-wrapper/
+A Swift micro-library that provides lightweight dependency injection, heavily influenced by [Shank](https://github.com/ZamzamInc/Shank)
 
 Inject dependencies via property wrappers:
 ```swift
@@ -19,6 +17,7 @@ class ViewController: UIViewController {
     }
 }
 ```
+
 Register modules early in your app:
 ```swift
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -34,6 +33,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 }
 ```
+
 If you forget to `build` the dependency container, it will result in a run-time exception. 
 Since there is no type-safety to guard against this, it is recommended to 
 limit the dependency container to hold "modules" only:
