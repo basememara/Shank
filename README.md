@@ -350,7 +350,7 @@ This way, only your "modules" are not type-safe, which is acceptable since
 an exception with a missing module should happen early on and hopefully
 obvious enough in development.
 
-However, the individual components are type-safe and have greater flexiblity to include
+However, the individual components are type-safe and have greater flexibility to include
 parameters while resolving the component. The components should have their dependencies
 injected through the constructor, which is the best form of dependency injection.
 The modules get the property wrappers support and can even inject modules within modules.
